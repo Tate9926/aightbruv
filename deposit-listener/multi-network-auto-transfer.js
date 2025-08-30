@@ -2,7 +2,7 @@ import { Connection, Keypair, PublicKey, SystemProgram, Transaction, sendAndConf
 import { mnemonicToSeedSync } from 'bip39'
 import { derivePath } from 'ed25519-hd-key'
 import { HDKey } from '@scure/bip32'
-import { secp256k1 } from '@noble/secp256k1'
+import * as secp256k1 from '@noble/secp256k1'
 import { keccak_256 } from '@noble/hashes/sha3'
 import { createClient } from '@supabase/supabase-js'
 import { fileURLToPath } from 'url'
