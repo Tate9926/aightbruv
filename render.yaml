@@ -1,0 +1,80 @@
+services:
+  # Frontend Web Service
+  - type: web
+    name: aightbruv-frontend
+    env: node
+    buildCommand: npm install && npm run build
+    startCommand: npm run preview
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: VITE_SUPABASE_URL
+        fromDatabase:
+          name: aightbruv-db
+          property: connectionString
+      - key: VITE_SUPABASE_ANON_KEY
+        value: your_supabase_anon_key_here
+
+  # Deposit Listener Background Service
+  - type: background
+    name: aightbruv-deposit-listener
+    env: node
+    buildCommand: npm install
+    startCommand: node deposit-listener/multi-network-listener.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: SUPABASE_URL
+        value: your_supabase_url_here
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        value: your_service_role_key_here
+      - key: SOLANA_WSS_URL
+        value: wss://lb.drpc.org/solana/AvyFcV4C7Eatu7YOOIJHzKFlwb_Ag4sR8IV_qhnKxixj
+      - key: ETHEREUM_WSS_URL
+        value: wss://lb.drpc.org/ethereum/AvyFcV4C7Eatu7YOOIJHzKFlwb_Ag4sR8IV_qhnKxixj
+      - key: TRON_WSS_URL
+        value: wss://lb.drpc.org/tron/AvyFcV4C7Eatu7YOOIJHzKFlwb_Ag4sR8IV_qhnKxixj
+      - key: SOLANA_RPC_URL
+        value: https://lb.drpc.org/solana/AvyFcV4C7Eatu7YOOIJHzKFlwb_Ag4sR8IV_qhnKxixj
+      - key: ETHEREUM_RPC_URL
+        value: https://lb.drpc.org/ethereum/AvyFcV4C7Eatu7YOOIJHzKFlwb_Ag4sR8IV_qhnKxixj
+      - key: TRON_RPC_URL
+        value: https://lb.drpc.org/tron/AvyFcV4C7Eatu7YOOIJHzKFlwb_Ag4sR8IV_qhnKxixj
+      - key: MASTER_MNEMONIC
+        value: island regular found stumble another cash loud slim one jewel pear midnight
+      - key: COLLECTION_WALLET_ADDRESS
+        value: Zg5r67TdhqKf6YYcU6hi86j8Up7LX9DzBo5VZdmQE8y
+      - key: ETHEREUM_COLLECTION_ADDRESS
+        value: 0x6608F3E90b2E0398CC9e9FF7D5bB6B1aBbeF357c
+      - key: TRON_COLLECTION_ADDRESS
+        value: TAWfSzCDG93EKQxutoYiUi5x7NLXTNoV7D
+      - key: MIN_DEPOSIT_SOL
+        value: 0.0001
+
+  # Auto-Transfer Background Service
+  - type: background
+    name: aightbruv-auto-transfer
+    env: node
+    buildCommand: npm install
+    startCommand: node deposit-listener/multi-network-auto-transfer.js listen
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: SUPABASE_URL
+        value: your_supabase_url_here
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        value: your_service_role_key_here
+      - key: SOLANA_RPC_URL
+        value: https://lb.drpc.org/solana/AvyFcV4C7Eatu7YOOIJHzKFlwb_Ag4sR8IV_qhnKxixj
+      - key: ETHEREUM_RPC_URL
+        value: https://lb.drpc.org/ethereum/AvyFcV4C7Eatu7YOOIJHzKFlwb_Ag4sR8IV_qhnKxixj
+      - key: TRON_RPC_URL
+        value: https://lb.drpc.org/tron/AvyFcV4C7Eatu7YOOIJHzKFlwb_Ag4sR8IV_qhnKxixj
+      - key: MASTER_MNEMONIC
+        value: island regular found stumble another cash loud slim one jewel pear midnight
+      - key: COLLECTION_WALLET_ADDRESS
+        value: Zg5r67TdhqKf6YYcU6hi86j8Up7LX9DzBo5VZdmQE8y
+      - key: ETHEREUM_COLLECTION_ADDRESS
+        value: 0x6608F3E90b2E0398CC9e9FF7D5bB6B1aBbeF357c
+      - key: TRON_COLLECTION_ADDRESS
+        value: TAWfSzCDG93EKQxutoYiUi5x7NLXTNoV7D
