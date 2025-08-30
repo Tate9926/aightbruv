@@ -137,12 +137,24 @@ class MultiNetworkDepositListener {
       this.connections[network].ws = ws
       
       ws.on('open', () => {
-        console.log(`✅ ${network.toUpperCase()} WebSocket connected`)
+        console.log(`✅ ${network.toUpperCase()} WebSocket connected to ${wsUrl}`)
         this.connections[network].isConnected = true
         this.reconnectAttempts[network] = 0
+        
+        // Send a test message to verify connection
+        if (network === 'solana') {
+          const testMessage = {
+            jsonrpc: '2.0',
+            id: 999999,
+            method: 'getVersion'
+          }
+          ws.send(JSON.stringify(testMessage))
+          console.log(`🧪 Sent test message to ${network.toUpperCase()}`)
+        }
       })
 
       ws.on('message', (data) => {
+        console.log(`📨 ${network.toUpperCase()} Raw WebSocket message:`, data.toString())
         this.handleWebSocketMessage(network, data)
       })
 
@@ -314,6 +326,12 @@ class MultiNetworkDepositListener {
       
       // Log messages for debugging
       console.log(`📨 ${network.toUpperCase()} WebSocket message:`, JSON.stringify(message, null, 2))
+      
+      // Handle test message responses
+      if (message.id === 999999 && message.result) {
+        console.log(`✅ ${network.toUpperCase()} WebSocket test successful:`, message.result)
+        return
+      }
 
       // Handle subscription confirmations
       if (message.result && typeof message.result === 'number') {
@@ -321,6 +339,7 @@ class MultiNetworkDepositListener {
         if (address) {
           console.log(`✅ ${network.toUpperCase()} subscription confirmed for ${address}: ID ${message.result}`)
           this.subscriptionIdToAddress[network].set(message.result, address)
+          console.log(`🔔 Now actively monitoring ${address} for deposits`)
         }
         return
       }
