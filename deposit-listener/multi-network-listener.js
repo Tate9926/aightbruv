@@ -141,20 +141,28 @@ class MultiNetworkDepositListener {
         this.connections[network].isConnected = true
         this.reconnectAttempts[network] = 0
         
-        // Send a test message to verify connection
-        if (network === 'solana') {
-          const testMessage = {
-            jsonrpc: '2.0',
-            id: 999999,
-            method: 'getVersion'
-          }
-          ws.send(JSON.stringify(testMessage))
-          console.log(`🧪 Sent test message to ${network.toUpperCase()}`)
+        // Test connection with getVersion for all networks
+        const testMessage = {
+          jsonrpc: '2.0',
+          id: 999999,
+          method: network === 'solana' ? 'getVersion' : 'web3_clientVersion'
         }
+        ws.send(JSON.stringify(testMessage))
+        console.log(`🧪 Sent test message to ${network.toUpperCase()}:`, JSON.stringify(testMessage))
       })
 
       ws.on('message', (data) => {
-        console.log(`📨 ${network.toUpperCase()} Raw WebSocket message:`, data.toString())
+        const messageStr = data.toString()
+        console.log(`📨 ${network.toUpperCase()} Raw WebSocket message:`, messageStr)
+        
+        // Parse and log structured data
+        try {
+          const parsed = JSON.parse(messageStr)
+          console.log(`📨 ${network.toUpperCase()} Parsed message:`, JSON.stringify(parsed, null, 2))
+        } catch (e) {
+          console.log(`⚠️ ${network.toUpperCase()} Non-JSON message:`, messageStr)
+        }
+        
         this.handleWebSocketMessage(network, data)
       })
 
@@ -275,38 +283,33 @@ class MultiNetworkDepositListener {
           break
           
         case 'ethereum':
-          // Ethereum WebSocket subscription for balance changes
+          // Ethereum WebSocket subscription for new pending transactions
           subscribeMessage = {
             jsonrpc: '2.0',
             id: subscriptionId,
-            method: 'eth_subscribe',
+            method: 'eth_subscribe', 
             params: [
-              'logs',
-              {
-                address: address,
-                topics: []
-              }
+              'newPendingTransactions'
             ]
           }
           break
           
         case 'tron':
-          // Tron WebSocket subscription (depends on your Tron WSS provider)
+          // Tron WebSocket subscription for account changes
           subscribeMessage = {
             jsonrpc: '2.0',
             id: subscriptionId,
-            method: 'subscribe',
+            method: 'accountSubscribe',
             params: [
-              'account',
-              {
-                address: address
-              }
+              address
             ]
           }
           break
       }
 
-      console.log(`📡 Subscribing to ${network.toUpperCase()} address: ${address} (ID: ${subscriptionId})`)
+      console.log(`📡 Subscribing to ${network.toUpperCase()} address: ${address}`)
+      console.log(`📡 Request ID: ${subscriptionId}`)
+      console.log(`📡 Message: ${JSON.stringify(subscribeMessage, null, 2)}`)
       ws.send(JSON.stringify(subscribeMessage))
       
       // Map subscription ID to address
@@ -329,16 +332,22 @@ class MultiNetworkDepositListener {
       
       // Handle test message responses
       if (message.id === 999999 && message.result) {
-        console.log(`✅ ${network.toUpperCase()} WebSocket test successful:`, message.result)
+        console.log(`✅ ${network.toUpperCase()} WebSocket test successful:`, JSON.stringify(message.result, null, 2))
+        console.log(`🔗 ${network.toUpperCase()} connection is working properly`)
         return
       }
 
       // Handle subscription confirmations
-      if (message.result && typeof message.result === 'number') {
+      if (message.result && (typeof message.result === 'number' || typeof message.result === 'string')) {
         const address = this.subscriptionIdToAddress[network].get(message.id)
         if (address) {
-          console.log(`✅ ${network.toUpperCase()} subscription confirmed for ${address}: ID ${message.result}`)
+          console.log(`✅ ${network.toUpperCase()} subscription confirmed for ${address}:`)
+          console.log(`   Request ID: ${message.id}`)
+          console.log(`   Subscription ID: ${message.result}`)
           this.subscriptionIdToAddress[network].set(message.result, address)
+          console.log(`🔔 Now actively monitoring ${address} for ${network.toUpperCase()} deposits`)
+        } else {
+          console.log(`⚠️ ${network.toUpperCase()} subscription confirmed but no address found for request ID: ${message.id}`)
           console.log(`🔔 Now actively monitoring ${address} for deposits`)
         }
         return
@@ -359,7 +368,14 @@ class MultiNetworkDepositListener {
 
       // Handle errors
       if (message.error) {
-        console.error(`❌ ${network.toUpperCase()} WebSocket error response:`, message.error)
+        console.error(`❌ ${network.toUpperCase()} WebSocket error response:`, JSON.stringify(message.error, null, 2))
+        
+        // Handle specific error codes
+        if (message.error.code === -32602) {
+          console.error(`❌ ${network.toUpperCase()} Invalid parameters - check subscription format`)
+        } else if (message.error.code === -32601) {
+          console.error(`❌ ${network.toUpperCase()} Method not found - WebSocket provider may not support this method`)
+        }
         return
       }
 
