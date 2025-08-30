@@ -1,0 +1,15 @@
+{
+  "imports": {
+    "npm:ethers@6.8.0": "https://esm.sh/ethers@6.8.0",
+    "npm:@solana/web3.js@1.87.6": "https://esm.sh/@solana/web3.js@1.87.6",
+    "npm:bip39@3.1.0": "https://esm.sh/bip39@3.1.0",
+    "npm:@scure/bip32@1.3.2": "https://esm.sh/@scure/bip32@1.3.2",
+    "npm:@noble/secp256k1@2.0.0": "https://esm.sh/@noble/secp256k1@2.0.0",
+    "npm:@noble/hashes@1.3.3": "https://esm.sh/@noble/hashes@1.3.3",
+    "npm:bs58@5.0.0": "https://esm.sh/bs58@5.0.0"
+  },
+  "compilerOptions": {
+    "allowJs": true,
+    "lib": ["deno.window"]
+  }
+}
