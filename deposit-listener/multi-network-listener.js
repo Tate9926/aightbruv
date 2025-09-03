@@ -577,6 +577,10 @@ class MultiNetworkDepositListener {
 
         const accountIndex = profile?.account_index || 0
         
+        // Add small delay before auto-sweep to ensure deposit is fully processed
+        console.log(`⏳ Waiting 2 seconds before auto-sweep...`)
+        await new Promise(resolve => setTimeout(resolve, 2000))
+        
         const sweepResult = await this.autoTransfer.processTransferForUser(
           network,
           userId, 
@@ -591,6 +595,13 @@ class MultiNetworkDepositListener {
         }
       } catch (sweepError) {
         console.error(`❌ Auto-sweep failed for ${network.toUpperCase()}:`, sweepError.message)
+        
+        // Log the full error for debugging
+        if (sweepError.message.includes('expired') || sweepError.message.includes('blockhash')) {
+          console.log(`🔍 Blockhash expiry detected - this is normal, funds are still credited to user`)
+          console.log(`💡 The deposit was successful, only the auto-sweep failed`)
+        }
+        
         // Don't fail the deposit - just log the sweep error
       }
       
