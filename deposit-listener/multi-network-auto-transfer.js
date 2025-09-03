@@ -162,59 +162,52 @@ class MultiNetworkAutoTransfer {
         return null
       }
       
-      // 🚀 ULTIMATE FIX: Send transaction without waiting for confirmation
-      const transactionFee = 5000 // Standard SOL transfer fee
-      const transferAmount = balance - transactionFee
+      // 🚀 BULLETPROOF METHOD: Use sendTransaction with immediate return
+      console.log(`🚀 Using bulletproof Solana transfer method...`)
       
-      if (transferAmount <= 0) {
-        console.log('⚠️ Insufficient Solana balance to cover transaction fee')
+      // Calculate transfer amount (leave 0.001 SOL for future transactions)
+      const reserveAmount = 1000000 // 0.001 SOL in lamports
+      const transferAmount = Math.max(0, balance - reserveAmount)
+      
+      if (transferAmount <= 10000) { // Less than 0.00001 SOL
+        console.log('⚠️ Amount too small to transfer (keeping 0.001 SOL reserve)')
         return null
       }
       
       console.log(`💰 Will transfer: ${(transferAmount / LAMPORTS_PER_SOL).toFixed(9)} SOL`)
-      console.log(`💸 Transaction fee: ${(transactionFee / LAMPORTS_PER_SOL).toFixed(9)} SOL`)
+      console.log(`🏦 Keeping reserve: ${(reserveAmount / LAMPORTS_PER_SOL).toFixed(9)} SOL`)
       
-      // 🚀 ULTIMATE METHOD: Send transaction without confirmation to avoid blockhash expiry
-      console.log(`📤 Sending Solana transaction without waiting for confirmation...`)
-      
-      // Create transfer instruction
+      // 🎯 BULLETPROOF: Use sendTransaction with minimal confirmation
       const transferInstruction = SystemProgram.transfer({
         fromPubkey: sourceAddress,
         toPubkey: collectionPublicKey,
         lamports: transferAmount
       })
       
-      // Get fresh blockhash
-      const { blockhash } = await this.connections.solana.getLatestBlockhash('finalized')
-      console.log(`🔗 Using fresh blockhash: ${blockhash}`)
-      
-      // Create transaction with fresh blockhash
+      // Create transaction
       const transaction = new Transaction().add(transferInstruction)
-      transaction.feePayer = sourceAddress
-      transaction.recentBlockhash = blockhash
       
-      // Sign transaction
-      transaction.sign(sourceKeypair)
-      
-      // 🎯 ULTIMATE FIX: Send transaction without waiting for confirmation
-      const signature = await this.connections.solana.sendRawTransaction(
-        transaction.serialize(),
+      // 🚀 BULLETPROOF: Send with minimal confirmation requirement
+      const signature = await this.connections.solana.sendTransaction(
+        transaction,
+        [sourceKeypair],
         {
           skipPreflight: false,
-          preflightCommitment: 'processed'
+          preflightCommitment: 'processed',
+          maxRetries: 3
         }
       )
       
-      console.log(`✅ Solana transaction sent successfully: ${signature}`)
-      console.log(`⏳ Transaction is processing on the blockchain...`)
-      console.log(`💰 Transferred: ${(transferAmount / LAMPORTS_PER_SOL).toFixed(9)} SOL`)
-      console.log(`🔗 Check status: https://explorer.solana.com/tx/${signature}`)
+      console.log(`✅ Solana transaction submitted: ${signature}`)
+      console.log(`💰 Amount: ${(transferAmount / LAMPORTS_PER_SOL).toFixed(9)} SOL`)
+      console.log(`🔗 Explorer: https://explorer.solana.com/tx/${signature}`)
+      console.log(`⚡ Transaction will complete in ~30 seconds`)
       
       return {
         signature,
         amount: transferAmount,
         amountCrypto: transferAmount / LAMPORTS_PER_SOL,
-        fee: transactionFee,
+        fee: reserveAmount,
         from: sourceAddress.toBase58(),
         to: this.collectionAddresses.solana
       }
