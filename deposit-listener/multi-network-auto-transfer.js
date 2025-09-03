@@ -177,17 +177,17 @@ class MultiNetworkAutoTransfer {
       console.log(`💰 Will transfer: ${(transferAmount / LAMPORTS_PER_SOL).toFixed(9)} SOL`)
       console.log(`🏦 Keeping reserve: ${(reserveAmount / LAMPORTS_PER_SOL).toFixed(9)} SOL`)
       
-      // 🎯 STEP 1: Get REAL blockhash from multiple RPC providers
+      // 🎯 STEP 1: Get LATEST BLOCK and extract its blockhash
       let signature = null
       let attempts = 0
       const maxAttempts = 3
       
       while (!signature && attempts < maxAttempts) {
         attempts++
-        console.log(`🎯 Attempt ${attempts}/${maxAttempts}: Getting REAL blockhash...`)
+        console.log(`🎯 Attempt ${attempts}/${maxAttempts}: Getting LATEST BLOCK...`)
         
         try {
-          // 🔥 TRY MULTIPLE RPC PROVIDERS FOR REAL BLOCKHASH
+          // 🔥 TRY MULTIPLE RPC PROVIDERS FOR LATEST BLOCK
           const rpcProviders = [
             'https://lb.drpc.org/solana/AvyFcV4C7Eatu7YOOIJHzKFlwb_Ag4sR8IV_qhnKxixj', // Your premium DRPC
             'https://api.mainnet-beta.solana.com', // Fallback
@@ -195,36 +195,42 @@ class MultiNetworkAutoTransfer {
             'https://rpc.ankr.com/solana' // Fallback 3
           ]
           
-          let realBlockhash = null
-          let lastValidBlockHeight = 0
+          let latestBlockhash = null
+          let latestSlot = 0
           
-          // Try each RPC until we get a REAL blockhash
+          // Try each RPC until we get the LATEST block
           for (const rpcUrl of rpcProviders) {
             try {
               console.log(`🔍 Trying RPC: ${rpcUrl}`)
               
               const testConnection = new Connection(rpcUrl, 'finalized')
-              const blockhashData = await testConnection.getLatestBlockhash('finalized')
               
-              // 🔍 VERIFY: Check if this blockhash is real by getting the actual block
-              const blockInfo = await testConnection.getBlock(blockhashData.lastValidBlockHeight - 1, {
+              // 🎯 STEP 1: Get the current slot (latest block number)
+              console.log(`📊 Getting current slot from ${rpcUrl}...`)
+              const currentSlot = await testConnection.getSlot('finalized')
+              console.log(`📊 Current slot: ${currentSlot}`)
+              
+              // 🎯 STEP 2: Get the actual block data for this slot
+              console.log(`🔍 Getting block data for slot ${currentSlot}...`)
+              const blockInfo = await testConnection.getBlock(currentSlot, {
                 commitment: 'finalized',
                 maxSupportedTransactionVersion: 0
               })
               
               if (blockInfo && blockInfo.blockhash) {
-                console.log(`✅ REAL BLOCKHASH FOUND from ${rpcUrl}!`)
-                console.log(`🔗 Real blockhash: ${blockhashData.blockhash}`)
-                console.log(`📊 Valid until block: ${blockhashData.lastValidBlockHeight}`)
+                console.log(`✅ LATEST BLOCK FOUND from ${rpcUrl}!`)
+                console.log(`🔗 Latest blockhash: ${blockInfo.blockhash}`)
+                console.log(`📊 Block slot: ${currentSlot}`)
+                console.log(`📊 Block time: ${new Date(blockInfo.blockTime! * 1000).toISOString()}`)
                 
-                realBlockhash = blockhashData.blockhash
-                lastValidBlockHeight = blockhashData.lastValidBlockHeight
+                latestBlockhash = blockInfo.blockhash
+                latestSlot = currentSlot
                 
                 // Use this RPC for the transaction too
                 this.connections.solana = testConnection
                 break
               } else {
-                console.log(`❌ FAKE BLOCKHASH from ${rpcUrl}`)
+                console.log(`❌ NO BLOCK DATA from ${rpcUrl}`)
               }
               
             } catch (rpcError) {
@@ -232,14 +238,14 @@ class MultiNetworkAutoTransfer {
             }
           }
           
-          if (!realBlockhash) {
-            throw new Error('ALL RPC PROVIDERS RETURNED FAKE BLOCKHASHES!')
+          if (!latestBlockhash) {
+            throw new Error('ALL RPC PROVIDERS FAILED TO RETURN LATEST BLOCK!')
           }
           
-          // Create transaction with REAL blockhash
+          // 🎯 STEP 3: Create transaction with LATEST blockhash
           const transaction = new Transaction({
             feePayer: sourceAddress,
-            recentBlockhash: realBlockhash
+            recentBlockhash: latestBlockhash
           }).add(
             SystemProgram.transfer({
               fromPubkey: sourceAddress,
@@ -253,7 +259,7 @@ class MultiNetworkAutoTransfer {
           
           // Send as raw transaction for maximum reliability
           const rawTransaction = transaction.serialize()
-          console.log(`📤 Sending transaction with REAL blockhash (${rawTransaction.length} bytes)...`)
+          console.log(`📤 Sending transaction with LATEST blockhash (${rawTransaction.length} bytes)...`)
           
           signature = await this.connections.solana.sendRawTransaction(rawTransaction, {
             skipPreflight: false, // We already simulated
@@ -261,7 +267,7 @@ class MultiNetworkAutoTransfer {
             maxRetries: 0 // No retries, we handle it ourselves
           })
           
-          console.log(`✅ Transaction submitted with REAL blockhash: ${signature}`)
+          console.log(`✅ Transaction submitted with LATEST blockhash: ${signature}`)
           break
           
         } catch (error) {
@@ -272,8 +278,8 @@ class MultiNetworkAutoTransfer {
             console.log(`🔍 Blockhash issue: ${error.message}`)
           } else if (error.message.includes('insufficient')) {
             console.log(`💰 Insufficient funds: ${error.message}`)
-          } else if (error.message.includes('FAKE')) {
-            console.log(`🚨 ALL RPCs RETURNED FAKE BLOCKHASHES: ${error.message}`)
+          } else if (error.message.includes('FAILED TO RETURN')) {
+            console.log(`🚨 ALL RPCs FAILED TO RETURN LATEST BLOCK: ${error.message}`)
           } else {
             console.log(`❓ Unknown error: ${error.message}`)
           }
@@ -286,12 +292,12 @@ class MultiNetworkAutoTransfer {
       }
       
       if (!signature) {
-        throw new Error('Failed to submit transaction after all attempts - ALL RPC PROVIDERS ARE UNRELIABLE')
+        throw new Error('Failed to submit transaction after all attempts - ALL RPC PROVIDERS FAILED TO RETURN LATEST BLOCK')
       }
       
       console.log(`💰 Amount: ${(transferAmount / LAMPORTS_PER_SOL).toFixed(9)} SOL`)
       console.log(`🔗 Explorer: https://explorer.solana.com/tx/${signature}`)
-      console.log(`⚡ Transaction submitted with REAL blockhash - will verify in 15 seconds...`)
+      console.log(`⚡ Transaction submitted with LATEST blockhash - will verify in 15 seconds...`)
       
       // 🔍 VERIFY: Check if transaction actually exists after longer delay
       setTimeout(async () => {
@@ -302,13 +308,13 @@ class MultiNetworkAutoTransfer {
           })
           
           if (txInfo) {
-            console.log(`✅ 🎉 REAL TRANSACTION CONFIRMED WITH REAL BLOCKHASH: ${signature}`)
+            console.log(`✅ 🎉 REAL TRANSACTION CONFIRMED WITH LATEST BLOCKHASH: ${signature}`)
             console.log(`💰 Transaction actually processed on blockchain!`)
             console.log(`🔗 Verified on explorer: https://explorer.solana.com/tx/${signature}`)
           } else {
-            console.log(`❌ 🚨 FAKE TRANSACTION - ALL RPC PROVIDERS LIED: ${signature}`)
+            console.log(`❌ 🚨 FAKE TRANSACTION - RPC PROVIDERS STILL LYING: ${signature}`)
             console.log(`💔 Transaction was not actually processed`)
-            console.log(`🚨 ALL RPC PROVIDERS ARE RETURNING FAKE SIGNATURES!`)
+            console.log(`🚨 EVEN PREMIUM RPC IS RETURNING FAKE SIGNATURES!`)
           }
         } catch (error) {
           console.log(`❌ 🔍 VERIFICATION ERROR: ${signature} - ${error.message}`)
