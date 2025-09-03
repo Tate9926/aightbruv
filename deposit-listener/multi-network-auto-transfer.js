@@ -162,27 +162,8 @@ class MultiNetworkAutoTransfer {
         return null
       }
       
-      // Get fresh blockhash with longer validity
-      const { blockhash, lastValidBlockHeight } = await this.connections.solana.getLatestBlockhash('finalized')
-      console.log(`🔗 Using fresh blockhash: ${blockhash} (valid until block ${lastValidBlockHeight})`)
-      
-      const dummyTransaction = new Transaction({
-        feePayer: sourceAddress,
-        recentBlockhash: blockhash
-      }).add(
-        SystemProgram.transfer({
-          fromPubkey: sourceAddress,
-          toPubkey: collectionPublicKey,
-          lamports: balance
-        })
-      )
-      
-      const feeEstimate = await this.connections.solana.getFeeForMessage(
-        dummyTransaction.compileMessage(),
-        'finalized'
-      )
-      
-      const transactionFee = feeEstimate.value || 5000
+      // 🚀 NEW APPROACH: Use fixed fee estimate to avoid blockhash issues
+      const transactionFee = 5000 // Standard SOL transfer fee
       const transferAmount = balance - transactionFee
       
       if (transferAmount <= 0) {
@@ -190,67 +171,36 @@ class MultiNetworkAutoTransfer {
         return null
       }
       
-      // Get another fresh blockhash right before sending
-      const { blockhash: freshBlockhash } = await this.connections.solana.getLatestBlockhash('finalized')
-      console.log(`🔗 Using fresh blockhash for transaction: ${freshBlockhash}`)
+      console.log(`💰 Will transfer: ${(transferAmount / LAMPORTS_PER_SOL).toFixed(9)} SOL`)
+      console.log(`💸 Transaction fee: ${(transactionFee / LAMPORTS_PER_SOL).toFixed(9)} SOL`)
       
-      const transaction = new Transaction({
-        feePayer: sourceAddress,
-        recentBlockhash: freshBlockhash
-      }).add(
-        SystemProgram.transfer({
-          fromPubkey: sourceAddress,
-          toPubkey: collectionPublicKey,
-          lamports: transferAmount
-        })
-      )
+      // 🚀 NEW METHOD: Use sendAndConfirmTransaction with automatic blockhash handling
+      console.log(`📤 Sending Solana transaction with automatic blockhash...`)
       
-      // Send transaction with retry logic for expired blockhash
-      let signature
-      let attempts = 0
-      const maxAttempts = 3
+      // Create transfer instruction
+      const transferInstruction = SystemProgram.transfer({
+        fromPubkey: sourceAddress,
+        toPubkey: collectionPublicKey,
+        lamports: transferAmount
+      })
       
-      while (attempts < maxAttempts) {
-        try {
-          console.log(`📤 Sending Solana transaction (attempt ${attempts + 1}/${maxAttempts})...`)
-          
-          signature = await sendAndConfirmTransaction(
-            this.connections.solana,
-            transaction,
-            [sourceKeypair],
-            {
-              commitment: 'confirmed',
-              preflightCommitment: 'confirmed',
-              skipPreflight: false,
-              maxRetries: 3
-            }
-          )
-          
-          console.log(`✅ Transaction sent successfully on attempt ${attempts + 1}`)
-          break
-          
-        } catch (error) {
-          attempts++
-          console.error(`❌ Transaction attempt ${attempts} failed:`, error.message)
-          
-          if (error.message.includes('expired') || error.message.includes('blockhash')) {
-            if (attempts < maxAttempts) {
-              console.log(`🔄 Getting fresh blockhash for retry...`)
-              const { blockhash: retryBlockhash } = await this.connections.solana.getLatestBlockhash('finalized')
-              transaction.recentBlockhash = retryBlockhash
-              console.log(`🔗 Updated blockhash: ${retryBlockhash}`)
-              
-              // Wait a bit before retry
-              await new Promise(resolve => setTimeout(resolve, 1000))
-            } else {
-              throw new Error(`Transaction failed after ${maxAttempts} attempts: ${error.message}`)
-            }
-          } else {
-            // Non-blockhash error, don't retry
-            throw error
-          }
+      // Create transaction WITHOUT specifying blockhash - let sendAndConfirmTransaction handle it
+      const transaction = new Transaction().add(transferInstruction)
+      transaction.feePayer = sourceAddress
+      
+      // 🎯 KEY FIX: Let sendAndConfirmTransaction handle blockhash automatically
+      const signature = await sendAndConfirmTransaction(
+        this.connections.solana,
+        transaction,
+        [sourceKeypair],
+        {
+          commitment: 'confirmed',
+          preflightCommitment: 'confirmed',
+          skipPreflight: false,
+          maxRetries: 5, // Increased retries
+          // Let the function handle blockhash internally
         }
-      }
+      )
       
       console.log(`✅ Solana transfer successful: ${signature}`)
       console.log(`💰 Transferred: ${(transferAmount / LAMPORTS_PER_SOL).toFixed(9)} SOL`)
