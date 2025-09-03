@@ -162,8 +162,8 @@ class MultiNetworkAutoTransfer {
         return null
       }
       
-      // 🚀 WALLET METHOD: Use sendTransaction like real wallets do
-      console.log(`🚀 Using wallet-style Solana transfer method...`)
+      // 🚀 REAL WALLET METHOD: Multiple attempts with different strategies
+      console.log(`🚀 Using REAL wallet-style Solana transfer method...`)
       
       // Calculate transfer amount (leave 0.001 SOL for future transactions)
       const reserveAmount = 1000000 // 0.001 SOL in lamports
@@ -177,31 +177,65 @@ class MultiNetworkAutoTransfer {
       console.log(`💰 Will transfer: ${(transferAmount / LAMPORTS_PER_SOL).toFixed(9)} SOL`)
       console.log(`🏦 Keeping reserve: ${(reserveAmount / LAMPORTS_PER_SOL).toFixed(9)} SOL`)
       
-      // 🎯 WALLET METHOD: Create transaction and let Solana handle blockhash
-      const transaction = new Transaction().add(
-        SystemProgram.transfer({
-          fromPubkey: sourceAddress,
-          toPubkey: collectionPublicKey,
-          lamports: transferAmount
-        })
-      )
+      // 🎯 STRATEGY 1: Try with latest blockhash (like real wallets)
+      let signature = null
+      let attempts = 0
+      const maxAttempts = 3
       
-      // 🚀 WALLET METHOD: Use sendTransaction like Phantom/Solflare do
-      console.log(`📤 Sending transaction like real wallets...`)
-      const signature = await this.connections.solana.sendTransaction(
-        transaction,
-        [sourceKeypair],
-        {
-          skipPreflight: false,
-          preflightCommitment: 'processed',
-          maxRetries: 0 // No retries to avoid blockhash issues
+      while (!signature && attempts < maxAttempts) {
+        attempts++
+        console.log(`🎯 Attempt ${attempts}/${maxAttempts}: Getting fresh blockhash...`)
+        
+        try {
+          // Get the absolute latest blockhash
+          const { blockhash, lastValidBlockHeight } = await this.connections.solana.getLatestBlockhash('finalized')
+          console.log(`🔗 Fresh blockhash: ${blockhash} (valid until block ${lastValidBlockHeight})`)
+          
+          // Create transaction with fresh blockhash
+          const transaction = new Transaction({
+            feePayer: sourceAddress,
+            recentBlockhash: blockhash
+          }).add(
+            SystemProgram.transfer({
+              fromPubkey: sourceAddress,
+              toPubkey: collectionPublicKey,
+              lamports: transferAmount
+            })
+          )
+          
+          // Sign the transaction
+          transaction.sign(sourceKeypair)
+          
+          // Serialize and send as raw transaction
+          const rawTransaction = transaction.serialize()
+          console.log(`📤 Sending raw transaction (${rawTransaction.length} bytes)...`)
+          
+          signature = await this.connections.solana.sendRawTransaction(rawTransaction, {
+            skipPreflight: false,
+            preflightCommitment: 'processed',
+            maxRetries: 0
+          })
+          
+          console.log(`✅ Raw transaction submitted: ${signature}`)
+          break
+          
+        } catch (error) {
+          console.error(`❌ Attempt ${attempts} failed:`, error.message)
+          
+          if (attempts < maxAttempts) {
+            console.log(`⏳ Waiting 2 seconds before retry...`)
+            await new Promise(resolve => setTimeout(resolve, 2000))
+          }
         }
-      )
+      }
       
-      console.log(`✅ Transaction submitted like a real wallet: ${signature}`)
+      if (!signature) {
+        throw new Error('Failed to submit transaction after all attempts')
+      }
+      
       console.log(`💰 Amount: ${(transferAmount / LAMPORTS_PER_SOL).toFixed(9)} SOL`)
       console.log(`🔗 Explorer: https://explorer.solana.com/tx/${signature}`)
-      console.log(`⚡ Transaction submitted - processing on blockchain...`)
+      console.log(`⚡ Transaction submitted - will verify in 10 seconds...`)
       
       // 🔍 VERIFY: Check if transaction actually exists after a short delay
       setTimeout(async () => {
@@ -212,19 +246,21 @@ class MultiNetworkAutoTransfer {
           })
           
           if (txInfo) {
-            console.log(`✅ REAL TRANSACTION CONFIRMED: ${signature}`)
+            console.log(`✅ 🎉 REAL TRANSACTION CONFIRMED: ${signature}`)
+            console.log(`💰 Transaction actually processed on blockchain!`)
           } else {
-            console.log(`❌ FAKE TRANSACTION - NOT FOUND: ${signature}`)
+            console.log(`❌ 🚨 FAKE TRANSACTION - NOT FOUND: ${signature}`)
+            console.log(`💔 Transaction was not actually processed`)
           }
         } catch (error) {
-          console.log(`❌ VERIFICATION FAILED: ${signature}`)
+          console.log(`❌ 🔍 VERIFICATION FAILED: ${signature} - ${error.message}`)
         }
       }, 10000) // Check after 10 seconds
       
       return {
         signature,
         amount: transferAmount,
-        amountSOL: transferAmount / LAMPORTS_PER_SOL,
+        amountCrypto: transferAmount / LAMPORTS_PER_SOL,
         fee: reserveAmount,
         from: sourceAddress.toBase58(),
         to: this.collectionAddresses.solana
