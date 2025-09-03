@@ -267,6 +267,12 @@ class MultiNetworkAutoTransfer {
             skipPreflight: false,
             maxRetries: 3
           })
+          signature = await sendAndConfirmTransaction(this.connections.solana, transaction, [sourceKeypair], {
+            commitment: 'confirmed',
+            preflightCommitment: 'confirmed',
+            skipPreflight: false,
+            maxRetries: 3
+          })
           
           console.log(`✅ Transaction submitted with LATEST blockhash: ${signature}`)
           break
