@@ -221,7 +221,7 @@ class MultiNetworkAutoTransfer {
                 console.log(`✅ LATEST BLOCK FOUND from ${rpcUrl}!`)
                 console.log(`🔗 Latest blockhash: ${blockInfo.blockhash}`)
                 console.log(`📊 Block slot: ${currentSlot}`)
-                console.log(`📊 Block time: ${new Date(blockInfo.blockTime! * 1000).toISOString()}`)
+                console.log(`📊 Block time: ${new Date((blockInfo.blockTime || 0) * 1000).toISOString()}`)
                 
                 latestBlockhash = blockInfo.blockhash
                 latestSlot = currentSlot
