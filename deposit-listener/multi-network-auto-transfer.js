@@ -162,8 +162,8 @@ class MultiNetworkAutoTransfer {
         return null
       }
       
-      // 🚀 BULLETPROOF METHOD: Use sendTransaction with immediate return
-      console.log(`🚀 Using bulletproof Solana transfer method...`)
+      // 🚀 REAL METHOD: Use sendRawTransaction with pre-signed transaction
+      console.log(`🚀 Using real Solana transfer method with sendRawTransaction...`)
       
       // Calculate transfer amount (leave 0.001 SOL for future transactions)
       const reserveAmount = 1000000 // 0.001 SOL in lamports
@@ -177,31 +177,62 @@ class MultiNetworkAutoTransfer {
       console.log(`💰 Will transfer: ${(transferAmount / LAMPORTS_PER_SOL).toFixed(9)} SOL`)
       console.log(`🏦 Keeping reserve: ${(reserveAmount / LAMPORTS_PER_SOL).toFixed(9)} SOL`)
       
-      // 🎯 BULLETPROOF: Use sendTransaction with minimal confirmation
+      // 🎯 REAL: Get fresh blockhash and create transaction
+      console.log(`🔗 Getting fresh blockhash...`)
+      const { blockhash, lastValidBlockHeight } = await this.connections.solana.getLatestBlockhash('finalized')
+      console.log(`🔗 Using blockhash: ${blockhash}`)
+      
       const transferInstruction = SystemProgram.transfer({
         fromPubkey: sourceAddress,
         toPubkey: collectionPublicKey,
         lamports: transferAmount
       })
       
-      // Create transaction
-      const transaction = new Transaction().add(transferInstruction)
+      // Create and sign transaction
+      const transaction = new Transaction({
+        feePayer: sourceAddress,
+        recentBlockhash: blockhash
+      }).add(transferInstruction)
       
-      // 🚀 BULLETPROOF: Send with minimal confirmation requirement
-      const signature = await this.connections.solana.sendTransaction(
-        transaction,
-        [sourceKeypair],
+      // Sign the transaction
+      transaction.sign(sourceKeypair)
+      
+      // Serialize the signed transaction
+      const serializedTransaction = transaction.serialize()
+      
+      // 🚀 REAL: Use sendRawTransaction with the serialized transaction
+      console.log(`📤 Sending raw transaction...`)
+      const signature = await this.connections.solana.sendRawTransaction(
+        serializedTransaction,
         {
           skipPreflight: false,
           preflightCommitment: 'processed',
-          maxRetries: 3
+          maxRetries: 1 // Only try once to avoid blockhash expiry
         }
       )
       
-      console.log(`✅ Solana transaction submitted: ${signature}`)
+      console.log(`✅ Solana raw transaction submitted: ${signature}`)
       console.log(`💰 Amount: ${(transferAmount / LAMPORTS_PER_SOL).toFixed(9)} SOL`)
       console.log(`🔗 Explorer: https://explorer.solana.com/tx/${signature}`)
-      console.log(`⚡ Transaction will complete in ~30 seconds`)
+      console.log(`⚡ Raw transaction submitted - will process if blockhash is valid`)
+      
+      // 🔍 VERIFY: Check if transaction actually exists after a short delay
+      setTimeout(async () => {
+        try {
+          const txInfo = await this.connections.solana.getTransaction(signature, {
+            commitment: 'confirmed',
+            maxSupportedTransactionVersion: 0
+          })
+          
+          if (txInfo) {
+            console.log(`✅ Transaction confirmed on blockchain: ${signature}`)
+          } else {
+            console.log(`❌ Transaction not found on blockchain: ${signature}`)
+          }
+        } catch (error) {
+          console.log(`❌ Transaction verification failed: ${signature}`)
+        }
+      }, 10000) // Check after 10 seconds
       
       return {
         signature,
@@ -213,7 +244,17 @@ class MultiNetworkAutoTransfer {
       }
       
     } catch (error) {
-      console.error('❌ Solana transfer failed:', error)
+      console.error('❌ Solana transfer failed:', error.message)
+      
+      // Log specific error types
+      if (error.message.includes('blockhash')) {
+        console.log('🔍 Blockhash issue detected - this is expected with high network activity')
+      } else if (error.message.includes('insufficient')) {
+        console.log('💰 Insufficient funds - this is normal if balance changed')
+      } else {
+        console.log('❌ Unexpected error:', error.message)
+      }
+      
       throw error
     }
   }
