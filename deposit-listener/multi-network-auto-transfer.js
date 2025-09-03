@@ -189,10 +189,10 @@ class MultiNetworkAutoTransfer {
         try {
           // 🔥 TRY MULTIPLE RPC PROVIDERS FOR REAL BLOCKHASH
           const rpcProviders = [
-            'https://api.mainnet-beta.solana.com',
-            'https://solana-api.projectserum.com', 
-            'https://rpc.ankr.com/solana',
-            'https://solana-mainnet.rpc.extrnode.com'
+            'https://lb.drpc.org/solana/AvyFcV4C7Eatu7YOOIJHzKFlwb_Ag4sR8IV_qhnKxixj', // Your premium DRPC
+            'https://api.mainnet-beta.solana.com', // Fallback
+            'https://solana-api.projectserum.com', // Fallback 2
+            'https://rpc.ankr.com/solana' // Fallback 3
           ]
           
           let realBlockhash = null
