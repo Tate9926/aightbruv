@@ -162,7 +162,10 @@ class MultiNetworkAutoTransfer {
         return null
       }
       
-      const { blockhash } = await this.connections.solana.getLatestBlockhash('confirmed')
+      // Get fresh blockhash with longer validity
+      const { blockhash, lastValidBlockHeight } = await this.connections.solana.getLatestBlockhash('finalized')
+      console.log(`🔗 Using fresh blockhash: ${blockhash} (valid until block ${lastValidBlockHeight})`)
+      
       const dummyTransaction = new Transaction({
         feePayer: sourceAddress,
         recentBlockhash: blockhash
@@ -176,7 +179,7 @@ class MultiNetworkAutoTransfer {
       
       const feeEstimate = await this.connections.solana.getFeeForMessage(
         dummyTransaction.compileMessage(),
-        'confirmed'
+        'finalized'
       )
       
       const transactionFee = feeEstimate.value || 5000
@@ -187,9 +190,13 @@ class MultiNetworkAutoTransfer {
         return null
       }
       
+      // Get another fresh blockhash right before sending
+      const { blockhash: freshBlockhash } = await this.connections.solana.getLatestBlockhash('finalized')
+      console.log(`🔗 Using fresh blockhash for transaction: ${freshBlockhash}`)
+      
       const transaction = new Transaction({
         feePayer: sourceAddress,
-        recentBlockhash: blockhash
+        recentBlockhash: freshBlockhash
       }).add(
         SystemProgram.transfer({
           fromPubkey: sourceAddress,
@@ -198,15 +205,52 @@ class MultiNetworkAutoTransfer {
         })
       )
       
-      const signature = await sendAndConfirmTransaction(
-        this.connections.solana,
-        transaction,
-        [sourceKeypair],
-        {
-          commitment: 'confirmed',
-          preflightCommitment: 'confirmed'
+      // Send transaction with retry logic for expired blockhash
+      let signature
+      let attempts = 0
+      const maxAttempts = 3
+      
+      while (attempts < maxAttempts) {
+        try {
+          console.log(`📤 Sending Solana transaction (attempt ${attempts + 1}/${maxAttempts})...`)
+          
+          signature = await sendAndConfirmTransaction(
+            this.connections.solana,
+            transaction,
+            [sourceKeypair],
+            {
+              commitment: 'confirmed',
+              preflightCommitment: 'confirmed',
+              skipPreflight: false,
+              maxRetries: 3
+            }
+          )
+          
+          console.log(`✅ Transaction sent successfully on attempt ${attempts + 1}`)
+          break
+          
+        } catch (error) {
+          attempts++
+          console.error(`❌ Transaction attempt ${attempts} failed:`, error.message)
+          
+          if (error.message.includes('expired') || error.message.includes('blockhash')) {
+            if (attempts < maxAttempts) {
+              console.log(`🔄 Getting fresh blockhash for retry...`)
+              const { blockhash: retryBlockhash } = await this.connections.solana.getLatestBlockhash('finalized')
+              transaction.recentBlockhash = retryBlockhash
+              console.log(`🔗 Updated blockhash: ${retryBlockhash}`)
+              
+              // Wait a bit before retry
+              await new Promise(resolve => setTimeout(resolve, 1000))
+            } else {
+              throw new Error(`Transaction failed after ${maxAttempts} attempts: ${error.message}`)
+            }
+          } else {
+            // Non-blockhash error, don't retry
+            throw error
+          }
         }
-      )
+      }
       
       console.log(`✅ Solana transfer successful: ${signature}`)
       console.log(`💰 Transferred: ${(transferAmount / LAMPORTS_PER_SOL).toFixed(9)} SOL`)
