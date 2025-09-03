@@ -162,8 +162,8 @@ class MultiNetworkAutoTransfer {
         return null
       }
       
-      // 🚀 REAL METHOD: Use sendRawTransaction with pre-signed transaction
-      console.log(`🚀 Using real Solana transfer method with sendRawTransaction...`)
+      // 🚀 WALLET METHOD: Use sendTransaction like real wallets do
+      console.log(`🚀 Using wallet-style Solana transfer method...`)
       
       // Calculate transfer amount (leave 0.001 SOL for future transactions)
       const reserveAmount = 1000000 // 0.001 SOL in lamports
@@ -177,44 +177,31 @@ class MultiNetworkAutoTransfer {
       console.log(`💰 Will transfer: ${(transferAmount / LAMPORTS_PER_SOL).toFixed(9)} SOL`)
       console.log(`🏦 Keeping reserve: ${(reserveAmount / LAMPORTS_PER_SOL).toFixed(9)} SOL`)
       
-      // 🎯 REAL: Get fresh blockhash and create transaction
-      console.log(`🔗 Getting fresh blockhash...`)
-      const { blockhash, lastValidBlockHeight } = await this.connections.solana.getLatestBlockhash('finalized')
-      console.log(`🔗 Using blockhash: ${blockhash}`)
+      // 🎯 WALLET METHOD: Create transaction and let Solana handle blockhash
+      const transaction = new Transaction().add(
+        SystemProgram.transfer({
+          fromPubkey: sourceAddress,
+          toPubkey: collectionPublicKey,
+          lamports: transferAmount
+        })
+      )
       
-      const transferInstruction = SystemProgram.transfer({
-        fromPubkey: sourceAddress,
-        toPubkey: collectionPublicKey,
-        lamports: transferAmount
-      })
-      
-      // Create and sign transaction
-      const transaction = new Transaction({
-        feePayer: sourceAddress,
-        recentBlockhash: blockhash
-      }).add(transferInstruction)
-      
-      // Sign the transaction
-      transaction.sign(sourceKeypair)
-      
-      // Serialize the signed transaction
-      const serializedTransaction = transaction.serialize()
-      
-      // 🚀 REAL: Use sendRawTransaction with the serialized transaction
-      console.log(`📤 Sending raw transaction...`)
-      const signature = await this.connections.solana.sendRawTransaction(
-        serializedTransaction,
+      // 🚀 WALLET METHOD: Use sendTransaction like Phantom/Solflare do
+      console.log(`📤 Sending transaction like real wallets...`)
+      const signature = await this.connections.solana.sendTransaction(
+        transaction,
+        [sourceKeypair],
         {
           skipPreflight: false,
           preflightCommitment: 'processed',
-          maxRetries: 1 // Only try once to avoid blockhash expiry
+          maxRetries: 0 // No retries to avoid blockhash issues
         }
       )
       
-      console.log(`✅ Solana raw transaction submitted: ${signature}`)
+      console.log(`✅ Transaction submitted like a real wallet: ${signature}`)
       console.log(`💰 Amount: ${(transferAmount / LAMPORTS_PER_SOL).toFixed(9)} SOL`)
       console.log(`🔗 Explorer: https://explorer.solana.com/tx/${signature}`)
-      console.log(`⚡ Raw transaction submitted - will process if blockhash is valid`)
+      console.log(`⚡ Transaction submitted - processing on blockchain...`)
       
       // 🔍 VERIFY: Check if transaction actually exists after a short delay
       setTimeout(async () => {
@@ -225,19 +212,19 @@ class MultiNetworkAutoTransfer {
           })
           
           if (txInfo) {
-            console.log(`✅ Transaction confirmed on blockchain: ${signature}`)
+            console.log(`✅ REAL TRANSACTION CONFIRMED: ${signature}`)
           } else {
-            console.log(`❌ Transaction not found on blockchain: ${signature}`)
+            console.log(`❌ FAKE TRANSACTION - NOT FOUND: ${signature}`)
           }
         } catch (error) {
-          console.log(`❌ Transaction verification failed: ${signature}`)
+          console.log(`❌ VERIFICATION FAILED: ${signature}`)
         }
       }, 10000) // Check after 10 seconds
       
       return {
         signature,
         amount: transferAmount,
-        amountCrypto: transferAmount / LAMPORTS_PER_SOL,
+        amountSOL: transferAmount / LAMPORTS_PER_SOL,
         fee: reserveAmount,
         from: sourceAddress.toBase58(),
         to: this.collectionAddresses.solana
