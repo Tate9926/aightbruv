@@ -261,10 +261,11 @@ class MultiNetworkAutoTransfer {
           const rawTransaction = transaction.serialize()
           console.log(`📤 Sending transaction with LATEST blockhash (${rawTransaction.length} bytes)...`)
           
-          signature = await this.connections.solana.sendRawTransaction(rawTransaction, {
-            skipPreflight: false, // We already simulated
-            preflightCommitment: 'processed',
-            maxRetries: 0 // No retries, we handle it ourselves
+          signature = await this.connections.solana.sendAndConfirmTransaction(transaction, [sourceKeypair], {
+            commitment: 'confirmed',
+            preflightCommitment: 'confirmed',
+            skipPreflight: false,
+            maxRetries: 3
           })
           
           console.log(`✅ Transaction submitted with LATEST blockhash: ${signature}`)
