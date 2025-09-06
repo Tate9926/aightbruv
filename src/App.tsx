@@ -69,18 +69,19 @@ const SnakePreview = ({ color }: { color: string }) => {
     
     // Snake setup for preview - responsive sizing
     const isMobile = canvasWidth < 300;
-    const segments = isMobile ? 6 : 8;
-    const segmentSize = isMobile ? 16 : 20;
-    const segmentSpacing = 7;
+    // Use smaller, smoother values for preview
+    const previewSegments = 22 // Smaller snake for preview
+    const previewSegmentSize = 22 // Smaller segments for preview
+    const previewSegmentSpacing = 4 // Slightly more spacing for smoother look
     
     // Initialize snake segments (horizontal)
     const snake = [];
     const centerX = canvasWidth / 2;
     const centerY = canvasHeight / 2;
     
-    for (let i = 0; i < segments; i++) {
+    for (let i = 0; i < previewSegments; i++) {
       snake.push({
-        x: centerX - i * (segmentSpacing + 2) + (isMobile ? 20 : 30),
+        x: centerX - i * (previewSegmentSpacing + 2) + (isMobile ? 20 : 30),
         y: centerY
       });
     }
@@ -96,21 +97,21 @@ const SnakePreview = ({ color }: { color: string }) => {
       const brightness = 1.2 - (i / snake.length) * 0.2;
       
       // Create radial gradient for 3D effect
-      const grad = ctx.createRadialGradient(seg.x, seg.y, 1, seg.x, seg.y, segmentSize / 2);
+      const grad = ctx.createRadialGradient(seg.x, seg.y, 1, seg.x, seg.y, previewSegmentSize / 2);
       grad.addColorStop(0, adjustColorBrightness(color, brightness));
       grad.addColorStop(0.5, color);
       grad.addColorStop(1, adjustColorBrightness(color, 0.9));
       
       ctx.fillStyle = grad;
       ctx.beginPath();
-      ctx.arc(seg.x, seg.y, segmentSize / 2, 0, Math.PI * 2);
+      ctx.arc(seg.x, seg.y, previewSegmentSize / 2, 0, Math.PI * 2);
       ctx.fill();
       
       // Add subtle border
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
       ctx.lineWidth = isMobile ? 0.5 : 1;
       ctx.beginPath();
-      ctx.arc(seg.x, seg.y, segmentSize / 2 - 1, 0, Math.PI * 2);
+      ctx.arc(seg.x, seg.y, previewSegmentSize / 2 - 1, 0, Math.PI * 2);
       ctx.stroke();
     }
     
