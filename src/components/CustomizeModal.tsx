@@ -10,8 +10,11 @@ interface CustomizeModalProps {
 }
 
 const predefinedColors = [
-  '#ff6b6b', '#45b7d1', '#feca57', '#ff9ff3', 
-  '#5f27cd', '#00d2d3', '#10ac84', '#ee5a24', '#0984e3'
+  '#66d9ff', // Blue (default)
+  '#ff6b47', // Orange
+  '#feca57', // Yellow
+  '#00d084', // Green
+  '#6c5ce7'  // Purple
 ]
 
 const lockedSkins = [
@@ -50,132 +53,186 @@ export function CustomizeModal({ isOpen, onClose, currentColor, onColorChange }:
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
-    // Clear canvas
-    ctx.clearRect(0, 0, canvas.width, canvas.height)
+    let animationId: number
+    let time = 0
     
-    // Snake setup for preview - adjusted for mobile
-    const isMobile = canvas.width < 500
-    const segments = isMobile ? 6 : 10
-    const segmentSize = isMobile ? 20 : 30
-    const segmentSpacing = 6
-    const lerpFactor = 0.2
-    
-    // Initialize snake segments
-    const snake = []
-    const centerX = canvas.width / 2
-    const centerY = canvas.height / 2
-    
-    for (let i = 0; i < segments; i++) {
-      snake.push({
-        x: centerX - i * (segmentSpacing + 5),
-        y: centerY
-      })
-    }
-    
-    // Static render function
-    const render = () => {
-      // Clear canvas
-      ctx.clearRect(0, 0, canvas.width, canvas.height)
+    const animate = () => {
+      // Clear canvas with subtle background
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.05)'
+      ctx.fillRect(0, 0, canvas.width, canvas.height)
       
-      // Draw snake with Slither.io style
+      time += 0.02
+      
+      // Snake setup for preview - adjusted for mobile
+      const isMobile = canvas.width < 500
+      // Use exact game values for realistic preview
+      const segments = 8 // Smaller snake for preview
+      const segmentSize = 30 // Smaller segments for preview
+      const segmentSpacing = 2 // Slightly more spacing for smoother look
+      
+      // Animated snake movement
+      const snake = []
+      const centerX = canvas.width / 2
+      const centerY = canvas.height / 2
+      const waveAmplitude = 8 // Smaller wave for smoother movement
+      const waveFrequency = 0.15 // Slower frequency for less jerky movement
+      
+      for (let i = 0; i < segments; i++) {
+        const baseX = centerX - i * (segmentSpacing + 8) // More spacing between segments
+        const waveOffset = Math.sin(time + i * waveFrequency) * waveAmplitude * (1 - i / segments)
+        
+        snake.push({
+          x: baseX + Math.cos(time * 0.3) * 15, // Slower horizontal movement
+          y: centerY + waveOffset + Math.sin(time * 0.2) * 8 // Slower vertical movement
+        })
+      }
+      
+      // Enhanced rendering with glow effects
       ctx.save()
-      ctx.shadowColor = 'rgba(0, 0, 0, 0.25)'
-      ctx.shadowBlur = 6
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.3)'
+      ctx.shadowBlur = 8
+      ctx.shadowOffsetX = 2
+      ctx.shadowOffsetY = 2
+      // Remove shadows for flat style
+      ctx.shadowColor = 'transparent'
+      ctx.shadowBlur = 0
+      ctx.shadowOffsetX = 0
+      ctx.shadowOffsetY = 0
       
-      // Draw segments
+      // Draw segments with enhanced visuals
       for (let i = 0; i < snake.length; i++) {
         const seg = snake[i]
-        const brightness = 1.2 - (i / snake.length) * 0.2
+        const brightness = 1.3 - (i / snake.length) * 0.3
+        const segmentRadius = segmentSize / 2 // Consistent size for all segments
         
-        // Create radial gradient for 3D effect
-        const grad = ctx.createRadialGradient(seg.x, seg.y, 2, seg.x, seg.y, segmentSize / 2)
-        grad.addColorStop(0, adjustColorBrightness(currentColor, brightness))
-        grad.addColorStop(0.5, currentColor)
-        grad.addColorStop(1, adjustColorBrightness(currentColor, 0.9))
+        // EXACT MATCH: Flat color body with soft outline - like HTML
+        ctx.fillStyle = currentColor === 'random' ? getRandomColor() : currentColor
+        ctx.strokeStyle = getDarkerShade(currentColor === 'random' ? getRandomColor() : currentColor)
+        ctx.lineWidth = 0.4 // Exact match from HTML
         
-        ctx.fillStyle = grad
         ctx.beginPath()
-        ctx.arc(seg.x, seg.y, segmentSize / 2, 0, Math.PI * 2)
+        ctx.arc(seg.x, seg.y, segmentRadius, 0, Math.PI * 2)
         ctx.fill()
-        
-        // Add subtle border
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)'
-        ctx.lineWidth = 1.5
-        ctx.beginPath()
-        ctx.arc(seg.x, seg.y, segmentSize / 2 - 2, 0, Math.PI * 2)
         ctx.stroke()
       }
       
-      // Draw eyes on head
-      const headSeg = snake[0]
-      const eyeOffset = isMobile ? 6 : 10
-      const eyeRadius = isMobile ? 5 : 8
-      const pupilRadius = 4
-      const pupilMove = 3
-      
-      // Eye positions like in the game
-      const leftEye = {
-        x: headSeg.x + Math.sin(0) * eyeOffset,
-        y: headSeg.y - Math.cos(0) * eyeOffset
+      // Draw eyes exactly like HTML example
+      if (snake.length > 0) {
+        const head = snake[0]
+        const eyeOffset = 10 // Exact match from HTML
+        const eyeRadius = 8 // Exact match from HTML
+        const pupilRadius = 4 // Exact match from HTML
+        const pupilMove = 2 // Exact match from HTML
+        
+        const headAngle = Math.atan2(
+          snake.length > 1 ? head.y - snake[1].y : Math.sin(time),
+          snake.length > 1 ? head.x - snake[1].x : Math.cos(time)
+        )
+        
+        // EXACT MATCH: Eye positioning from HTML
+        const leftEye = {
+          x: head.x + Math.sin(headAngle) * eyeOffset,
+          y: head.y - Math.cos(headAngle) * eyeOffset
+        }
+        const rightEye = {
+          x: head.x - Math.sin(headAngle) * eyeOffset,
+          y: head.y + Math.cos(headAngle) * eyeOffset
+        }
+        
+        // EXACT MATCH: Simple white eyes from HTML
+        ctx.fillStyle = 'white'
+        ctx.beginPath()
+        ctx.arc(leftEye.x, leftEye.y, eyeRadius, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.beginPath()
+        ctx.arc(rightEye.x, rightEye.y, eyeRadius, 0, Math.PI * 2)
+        ctx.fill()
+        
+        // EXACT MATCH: Pupil positioning and movement from HTML
+        const leftPupil = {
+          x: leftEye.x + Math.cos(headAngle) * pupilMove,
+          y: leftEye.y + Math.sin(headAngle) * pupilMove
+        }
+        const rightPupil = {
+          x: rightEye.x + Math.cos(headAngle) * pupilMove,
+          y: rightEye.y + Math.sin(headAngle) * pupilMove
+        }
+        
+        // EXACT MATCH: Simple black pupils from HTML
+        ctx.fillStyle = 'black'
+        ctx.beginPath()
+        ctx.arc(leftPupil.x, leftPupil.y, pupilRadius, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.beginPath()
+        ctx.arc(rightPupil.x, rightPupil.y, pupilRadius, 0, Math.PI * 2)
+        ctx.fill()
       }
-      const rightEye = {
-        x: headSeg.x - Math.sin(0) * eyeOffset,
-        y: headSeg.y + Math.cos(0) * eyeOffset
-      }
-      
-      // Draw eye whites
-      ctx.fillStyle = 'white'
-      ctx.beginPath()
-      ctx.arc(leftEye.x, leftEye.y, eyeRadius, 0, Math.PI * 2)
-      ctx.fill()
-      ctx.beginPath()
-      ctx.arc(rightEye.x, rightEye.y, eyeRadius, 0, Math.PI * 2)
-      ctx.fill()
-      
-      // Draw pupils with slight forward direction
-      const pupilPos = (eye: { x: number; y: number }) => {
-        const dx = Math.cos(0) * pupilMove
-        const dy = Math.sin(0) * pupilMove
-        const dist = Math.sqrt(dx * dx + dy * dy)
-        const scale = Math.min(1, (eyeRadius - pupilRadius) / dist)
-        return { x: eye.x + dx * scale, y: eye.y + dy * scale }
-      }
-
-      const leftPupil = pupilPos(leftEye)
-      const rightPupil = pupilPos(rightEye)
-      
-      ctx.fillStyle = 'black'
-      ctx.beginPath()
-      ctx.arc(leftPupil.x, leftPupil.y, pupilRadius, 0, Math.PI * 2)
-      ctx.fill()
-      ctx.beginPath()
-      ctx.arc(rightPupil.x, rightPupil.y, pupilRadius, 0, Math.PI * 2)
-      ctx.fill()
-      
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.8)'
-      ctx.beginPath()
-      ctx.arc(leftPupil.x + 1, leftPupil.y + 1, 1.5, 0, Math.PI * 2)
-      ctx.fill()
-      ctx.beginPath()
-      ctx.arc(rightPupil.x + 1, rightPupil.y + 1, 1.5, 0, Math.PI * 2)
-      ctx.fill()
       
       ctx.restore()
+      
+      animationId = requestAnimationFrame(animate)
     }
     
-    // Render once
-    render()
+    // Start animation
+    animate()
+    
+    // Cleanup
+    return () => {
+      if (animationId) {
+        cancelAnimationFrame(animationId)
+      }
+    }
   }, [currentColor])
 
+  // Helper function for random color cycling
+  const getRandomColor = () => {
+    const colorIndex = Math.floor(Date.now() / 1000) % predefinedColors.length
+    return predefinedColors[colorIndex]
+  }
+
+  // Helper function to get darker shade - exact match from HTML
+  const getDarkerShade = (color: string): string => {
+    if (color === '#66d9ff') {
+      return '#3399cc' // Exact match from HTML
+    }
+    
+    // For other colors, create a darker version
+    if (color.startsWith('#')) {
+      const r = parseInt(color.substr(1, 2), 16)
+      const g = parseInt(color.substr(3, 2), 16)
+      const b = parseInt(color.substr(5, 2), 16)
+      
+      // Make it darker by reducing each component by 30%
+      const newR = Math.floor(r * 0.7)
+      const newG = Math.floor(g * 0.7)
+      const newB = Math.floor(b * 0.7)
+      
+      return `#${newR.toString(16).padStart(2, '0')}${newG.toString(16).padStart(2, '0')}${newB.toString(16).padStart(2, '0')}`
+    }
+    
+    return color
+  }
+
   const adjustColorBrightness = (hex: string, factor: number): string => {
-    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex)
-    if (!result) return hex
+    // Handle both hex and rgb formats
+    if (hex.startsWith('rgb')) {
+      const match = hex.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/)
+      if (match) {
+        const r = Math.min(255, Math.max(0, Math.floor(parseInt(match[1]) * factor)))
+        const g = Math.min(255, Math.max(0, Math.floor(parseInt(match[2]) * factor)))
+        const b = Math.min(255, Math.max(0, Math.floor(parseInt(match[3]) * factor)))
+        return `rgb(${r}, ${g}, ${b})`
+      }
+    }
     
-    const r = Math.min(255, Math.floor(parseInt(result[1], 16) * factor))
-    const g = Math.min(255, Math.floor(parseInt(result[2], 16) * factor))
-    const b = Math.min(255, Math.floor(parseInt(result[3], 16) * factor))
-    
-    return `rgb(${r}, ${g}, ${b})`
+    const cleanHex = hex.replace('#', '')
+    const r = parseInt(cleanHex.substr(0, 2), 16)
+    const g = parseInt(cleanHex.substr(2, 2), 16)
+    const b = parseInt(cleanHex.substr(4, 2), 16)
+    const newR = Math.min(255, Math.max(0, Math.floor(r * factor)))
+    const newG = Math.min(255, Math.max(0, Math.floor(g * factor)))
+    const newB = Math.min(255, Math.max(0, Math.floor(b * factor)))
+    return `rgb(${newR}, ${newG}, ${newB})`
   }
 
   if (!isOpen) return null
@@ -210,7 +267,7 @@ export function CustomizeModal({ isOpen, onClose, currentColor, onColorChange }:
               </button>
               <button
                 onClick={() => setMainTab('shop')}
-               onMouseDown={playTabClick}
+                onMouseDown={playTabClick}
                 className={`inline-flex items-center justify-center whitespace-nowrap rounded-lg text-xs sm:text-sm font-bold ring-offset-background transition-all duration-100 ease-in-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 select-none cursor-pointer will-change-transform px-2 sm:px-4 py-2 bg-transparent border-2 border-yellow-400 text-yellow-400 shadow-[0_4px_0_#ca8a04] hover:bg-yellow-400/10 hover:shadow-[0_2px_0_#ca8a04] active:shadow-[0_1px_0_#ca8a04] hover:translate-y-[2px] active:translate-y-[3px] ${
                   mainTab === 'shop' ? 'bg-yellow-400 text-black shadow-[0_2px_0_#ca8a04] translate-y-[2px]' : 'text-yellow-400'
                 }`}
@@ -226,12 +283,13 @@ export function CustomizeModal({ isOpen, onClose, currentColor, onColorChange }:
                 <div className="h-full flex flex-col">
                   {/* Snake Preview */}
                   <div className="flex-shrink-0 mb-2 sm:mb-4">
-                    <div className="h-20 sm:h-32 bg-gradient-to-br from-yellow-400/5 to-yellow-600/10 border border-yellow-400/20 rounded-lg overflow-hidden">
+                    <div className="h-24 sm:h-36 bg-gradient-to-br from-yellow-400/5 to-yellow-600/10 border border-yellow-400/20 rounded-lg overflow-hidden relative">
+                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-yellow-400/5 to-transparent"></div>
                       <canvas 
                         ref={canvasRef}
-                        className="w-full h-full"
+                        className="w-full h-full relative z-10"
                         width={400}
-                        height={80}
+                        height={120}
                       />
                     </div>
                   </div>
@@ -244,7 +302,7 @@ export function CustomizeModal({ isOpen, onClose, currentColor, onColorChange }:
                       <div className="items-center justify-center gap-1 sm:gap-2 p-0 bg-transparent grid w-full grid-cols-3 flex-shrink-0 mb-2 sm:mb-4">
                         <button
                           onClick={() => setSubTab('skins')}
-                         onMouseDown={playTabClick}
+                          onMouseDown={playTabClick}
                           className={`inline-flex items-center justify-center whitespace-nowrap rounded-lg text-xs sm:text-sm font-bold ring-offset-background transition-all duration-100 ease-in-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 select-none cursor-pointer will-change-transform px-2 sm:px-4 py-2 bg-transparent border-2 border-yellow-400 text-yellow-400 shadow-[0_4px_0_#ca8a04] hover:bg-yellow-400/10 hover:shadow-[0_2px_0_#ca8a04] active:shadow-[0_1px_0_#ca8a04] hover:translate-y-[2px] active:translate-y-[3px] ${
                             subTab === 'skins' ? '!bg-yellow-400 !text-black shadow-[0_2px_0_#ca8a04] translate-y-[2px]' : 'text-yellow-400'
                           }`}
@@ -254,7 +312,7 @@ export function CustomizeModal({ isOpen, onClose, currentColor, onColorChange }:
                         </button>
                         <button
                           onClick={() => setSubTab('hats')}
-                         onMouseDown={playTabClick}
+                          onMouseDown={playTabClick}
                           className={`inline-flex items-center justify-center whitespace-nowrap rounded-lg text-xs sm:text-sm font-bold ring-offset-background transition-all duration-100 ease-in-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 select-none cursor-pointer will-change-transform px-2 sm:px-4 py-2 bg-transparent border-2 border-yellow-400 text-yellow-400 shadow-[0_4px_0_#ca8a04] hover:bg-yellow-400/10 hover:shadow-[0_2px_0_#ca8a04] active:shadow-[0_1px_0_#ca8a04] hover:translate-y-[2px] active:translate-y-[3px] ${
                             subTab === 'hats' ? '!bg-yellow-400 !text-black shadow-[0_2px_0_#ca8a04] translate-y-[2px]' : 'text-yellow-400'
                           }`}
@@ -264,7 +322,7 @@ export function CustomizeModal({ isOpen, onClose, currentColor, onColorChange }:
                         </button>
                         <button
                           onClick={() => setSubTab('boosts')}
-                         onMouseDown={playTabClick}
+                          onMouseDown={playTabClick}
                           className={`inline-flex items-center justify-center whitespace-nowrap rounded-lg text-xs sm:text-sm font-bold ring-offset-background transition-all duration-100 ease-in-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 select-none cursor-pointer will-change-transform px-2 sm:px-4 py-2 bg-transparent border-2 border-yellow-400 text-yellow-400 shadow-[0_4px_0_#ca8a04] hover:bg-yellow-400/10 hover:shadow-[0_2px_0_#ca8a04] active:shadow-[0_1px_0_#ca8a04] hover:translate-y-[2px] active:translate-y-[3px] ${
                             subTab === 'boosts' ? '!bg-yellow-400 !text-black shadow-[0_2px_0_#ca8a04] translate-y-[2px]' : 'text-yellow-400'
                           }`}
@@ -282,13 +340,19 @@ export function CustomizeModal({ isOpen, onClose, currentColor, onColorChange }:
                               {/* Random Option */}
                               <div
                                 onClick={() => setSelectedSkin('random')}
-                               onMouseDown={playButtonClick}
-                                className={`aspect-square transition-all rounded-md sm:rounded-lg flex items-center justify-center relative overflow-hidden cursor-pointer hover:ring-gold/50 touch-manipulation ${
-                                  selectedSkin === 'random' ? 'ring-2 ring-yellow-400' : 'ring-1 ring-border/20'
+                                className={`aspect-square transition-all rounded-md sm:rounded-lg flex items-center justify-center relative overflow-hidden cursor-pointer hover:ring-gold/50 touch-manipulation hover:scale-105 ${
+                                  selectedSkin === 'random' ? 'ring-2 ring-yellow-400 scale-105' : 'ring-1 ring-border/20'
                                 }`}
-                                style={{ backgroundColor: 'transparent' }}
+                                style={{
+                                  backgroundColor: selectedSkin === 'random' 
+                                    ? '#9333ea'
+                                    : selectedSkin,
+                                  border: selectedSkin === 'random' 
+                                    ? '1px solid #7c3aed'
+                                    : `1px solid ${adjustColorBrightness(selectedSkin, 0.7)}`
+                                }}
                               >
-                                <Shuffle className="w-4 h-4 sm:w-6 sm:h-6 text-muted-foreground" />
+                                <Shuffle className="w-4 h-4 sm:w-6 sm:h-6 text-purple-300" />
                               </div>
 
                               {/* Color Options */}
@@ -296,26 +360,33 @@ export function CustomizeModal({ isOpen, onClose, currentColor, onColorChange }:
                                 <div
                                   key={index}
                                   onClick={() => {
-                                   playButtonClick()
+                                    playButtonClick()
                                     setSelectedSkin(color)
                                     onColorChange(color)
                                   }}
-                                  className={`aspect-square transition-all rounded-md sm:rounded-lg flex items-center justify-center relative overflow-hidden cursor-pointer hover:ring-gold/50 touch-manipulation ${
-                                    selectedSkin === color ? 'ring-2 ring-yellow-400' : 'ring-1 ring-border/20'
+                                  className={`aspect-square transition-all rounded-md sm:rounded-lg flex items-center justify-center relative overflow-hidden cursor-pointer hover:ring-gold/50 touch-manipulation hover:scale-105 ${
+                                    selectedSkin === color ? 'ring-2 ring-yellow-400 scale-105' : 'ring-1 ring-border/20'
                                   }`}
-                                  style={{ backgroundColor: color }}
-                                />
+                                  style={{ 
+                                    backgroundColor: color, // Flat color instead of gradient
+                                    border: `1px solid ${adjustColorBrightness(color, 0.7)}` // Subtle border
+                                  }}
+                                >
+                                  {selectedSkin === color && (
+                                    <div className="absolute inset-0 bg-white/10 rounded-md sm:rounded-lg"></div>
+                                  )}
+                                </div>
                               ))}
 
                               {/* Locked Skins */}
                               {lockedSkins.map((skin, index) => (
                                 <div
                                   key={index}
-                                  className="aspect-square transition-all ring-1 ring-border/20 rounded-md sm:rounded-lg flex items-center justify-center relative overflow-hidden cursor-not-allowed opacity-50 grayscale"
+                                  className="aspect-square transition-all ring-1 ring-border/20 rounded-md sm:rounded-lg flex items-center justify-center relative overflow-hidden cursor-not-allowed opacity-50 grayscale hover:opacity-60"
                                   style={{ backgroundColor: skin.color }}
                                 >
-                                  <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-                                    <Lock className="w-3 h-3 sm:w-4 sm:h-4 text-white" />
+                                  <div className="absolute inset-0 bg-black/60 flex items-center justify-center backdrop-blur-sm">
+                                    <Lock className="w-3 h-3 sm:w-4 sm:h-4 text-white drop-shadow-lg" />
                                   </div>
                                 </div>
                               ))}
@@ -347,7 +418,7 @@ export function CustomizeModal({ isOpen, onClose, currentColor, onColorChange }:
                     <div className={`transition-all duration-300 relative hidden lg:block ${sidebarCollapsed ? 'w-8' : 'w-64'}`}>
                       <button
                         onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-                       onMouseDown={playButtonClick}
+                        onMouseDown={playButtonClick}
                         className="absolute left-0 top-0 h-8 w-8 bg-background/80 backdrop-blur-sm border border-border/40 rounded-l-lg flex items-center justify-center hover:bg-background/90 transition-colors z-10"
                       >
                         <ChevronRight className={`w-4 h-4 transition-transform ${sidebarCollapsed ? '' : 'rotate-180'}`} />
@@ -364,15 +435,16 @@ export function CustomizeModal({ isOpen, onClose, currentColor, onColorChange }:
                                 <div 
                                   className="w-16 h-16 sm:w-20 sm:h-20 mx-auto rounded-xl flex items-center justify-center mb-3 border-2 border-border/30 shadow-lg relative overflow-hidden"
                                   style={{ 
-                                    backgroundColor: selectedSkin === 'random' ? 'transparent' : selectedSkin,
-                                    boxShadow: 'rgba(255, 255, 255, 0.1) 0px 0px 20px'
+                                    background: selectedSkin === 'random' 
+                                      ? 'linear-gradient(135deg, rgba(147, 51, 234, 0.3) 0%, rgba(59, 130, 246, 0.3) 100%)'
+                                      : `linear-gradient(135deg, ${selectedSkin} 0%, ${adjustColorBrightness(selectedSkin, 0.8)} 100%)`,
+                                    boxShadow: selectedSkin === 'random' 
+                                      ? 'rgba(147, 51, 234, 0.3) 0px 0px 20px'
+                                      : `${selectedSkin}40 0px 0px 20px`
                                   }}
                                 >
                                   {selectedSkin === 'random' && (
-                                    <>
-                                      <div className="absolute inset-0 bg-gradient-to-br from-purple-500/20 to-blue-500/20 rounded-xl"></div>
-                                      <Shuffle className="w-8 h-8 sm:w-10 sm:h-10 text-muted-foreground relative z-10" />
-                                    </>
+                                    <Shuffle className="w-8 h-8 sm:w-10 sm:h-10 text-purple-300 relative z-10" />
                                   )}
                                 </div>
                               </div>
@@ -427,14 +499,16 @@ export function CustomizeModal({ isOpen, onClose, currentColor, onColorChange }:
                             <div 
                               className="w-12 h-12 mx-auto rounded-lg flex items-center justify-center mb-2 border border-border/30 shadow-lg relative overflow-hidden"
                               style={{ 
-                                backgroundColor: selectedSkin === 'random' ? 'transparent' : selectedSkin,
+                                backgroundColor: selectedSkin === 'random' 
+                                  ? '#9333ea'
+                                  : selectedSkin,
+                                border: selectedSkin === 'random' 
+                                  ? '1px solid #7c3aed'
+                                  : `1px solid ${adjustColorBrightness(selectedSkin, 0.7)}`
                               }}
                             >
                               {selectedSkin === 'random' && (
-                                <>
-                                  <div className="absolute inset-0 bg-gradient-to-br from-purple-500/20 to-blue-500/20 rounded-lg"></div>
-                                  <Shuffle className="w-6 h-6 text-muted-foreground relative z-10" />
-                                </>
+                                <Shuffle className="w-6 h-6 text-purple-300 relative z-10" />
                               )}
                             </div>
                             <h4 className="text-sm font-bold text-foreground mb-1">
