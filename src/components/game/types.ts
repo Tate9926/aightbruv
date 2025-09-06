@@ -49,13 +49,13 @@ export interface GameState {
 }
 
 // Game constants
-export const SEGMENT_SIZE = 30
+export const SEGMENT_SIZE = 34 // Exact match from HTML example
 export const INITIAL_SEGMENTS = 7
-export const SEGMENT_SPACING = 2
+export const SEGMENT_SPACING = 2 // Exact match from HTML
 export const LERP_FACTOR = 0.2
-export const SPEED = 3.0 // Consistent speed for all devices
+export const SPEED = 2.0 // Exact match from HTML (speed = 2)
 export const FOOD_COUNT = 50
-export const FOOD_RADIUS = 6
+export const FOOD_RADIUS = 6 // Exact match from HTML (foodRadius = 6)
 export const ARENA_WIDTH = 4000
 export const ARENA_HEIGHT = 3000
 export const CAMERA_LERP = 0.08
