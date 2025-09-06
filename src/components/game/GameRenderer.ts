@@ -1,5 +1,12 @@
 import { Camera, SnakeSegment, Food, MultiplayerSnake } from './types'
-import { SEGMENT_SIZE, ARENA_WIDTH, ARENA_HEIGHT, FOOD_RADIUS } from './types'
+import { ARENA_WIDTH, ARENA_HEIGHT, FOOD_RADIUS } from './types'
+
+// Visual constants matching the HTML example exactly
+const SEGMENT_SIZE = 34 // Exact match from HTML
+const EYE_RADIUS = 8
+const PUPIL_RADIUS = 4
+const EYE_OFFSET = 10
+const PUPIL_MOVE = 2
 
 export class GameRenderer {
   private ctx: CanvasRenderingContext2D
@@ -63,6 +70,7 @@ export class GameRenderer {
         return
       }
       
+      // Simple flat food circles - exactly like HTML example
       this.ctx.fillStyle = food.color
       this.ctx.beginPath()
       this.ctx.arc(food.x - camera.x, food.y - camera.y, food.radius, 0, Math.PI * 2)
@@ -73,12 +81,8 @@ export class GameRenderer {
   drawSnake(snake: SnakeSegment[], color: string, camera: Camera, showEyes: boolean = false, angle: number = 0, forceShowEyes: boolean = false) {
     if (snake.length === 0) return
 
-    this.ctx.save()
-    this.ctx.shadowColor = 'rgba(0, 0, 0, 0.25)'
-    this.ctx.shadowBlur = 6
-
-    // Draw segments
-    for (let i = 0; i < snake.length; i++) {
+    // Draw segments exactly like the HTML example
+    for (let i = snake.length - 1; i >= 0; i--) {
       const seg = snake[i]
       
       // Only draw segments that are visible
@@ -87,89 +91,66 @@ export class GameRenderer {
         continue
       }
       
-      const brightness = 1.2 - (i / snake.length) * 0.2
       const screenX = seg.x - camera.x
       const screenY = seg.y - camera.y
-      const grad = this.ctx.createRadialGradient(screenX, screenY, 2, screenX, screenY, SEGMENT_SIZE / 2)
-      grad.addColorStop(0, this.adjustColorBrightness(color, brightness))
-      grad.addColorStop(0.5, color)
-      grad.addColorStop(1, this.adjustColorBrightness(color, 0.9))
       
-      this.ctx.fillStyle = grad
+      // EXACT MATCH: Flat color body with soft outline
+      this.ctx.fillStyle = color || '#66d9ff'  // flat light blue body
+      this.ctx.strokeStyle = this.getDarkerShade(color || '#66d9ff') // softer, darker outline
+      this.ctx.lineWidth = 0.4  // thinner outline - exactly like HTML
+      
       this.ctx.beginPath()
       this.ctx.arc(screenX, screenY, SEGMENT_SIZE / 2, 0, Math.PI * 2)
       this.ctx.fill()
-      
-      this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)'
-      this.ctx.lineWidth = 1.5
-      this.ctx.beginPath()
-      this.ctx.arc(screenX, screenY, SEGMENT_SIZE / 2 - 2, 0, Math.PI * 2)
       this.ctx.stroke()
     }
 
-    // Always draw eyes for all snakes
+    // Draw eyes only on head (first segment) - exactly like HTML
     if (snake.length > 0) {
       this.drawEyes(snake[0], camera, angle)
     }
-
-    this.ctx.restore()
   }
 
   private drawEyes(head: SnakeSegment, camera: Camera, angle: number) {
     const headScreenX = head.x - camera.x
     const headScreenY = head.y - camera.y
     
-    // Larger eyes for better visibility on all devices
-    const eyeOffset = 10
-    const eyeRadius = 8
-    const pupilRadius = 4
-    const pupilMove = 3
-    
+    // EXACT MATCH: Eye positioning from HTML example
     const leftEye = {
-      x: headScreenX + Math.sin(angle) * eyeOffset,
-      y: headScreenY - Math.cos(angle) * eyeOffset
+      x: headScreenX + Math.sin(angle) * EYE_OFFSET,
+      y: headScreenY - Math.cos(angle) * EYE_OFFSET
     }
     const rightEye = {
-      x: headScreenX - Math.sin(angle) * eyeOffset,
-      y: headScreenY + Math.cos(angle) * eyeOffset
+      x: headScreenX - Math.sin(angle) * EYE_OFFSET,
+      y: headScreenY + Math.cos(angle) * EYE_OFFSET
     }
 
-    // Draw eye whites
+    // EXACT MATCH: Simple white eyes
     this.ctx.fillStyle = 'white'
     this.ctx.beginPath()
-    this.ctx.arc(leftEye.x, leftEye.y, eyeRadius, 0, Math.PI * 2)
+    this.ctx.arc(leftEye.x, leftEye.y, EYE_RADIUS, 0, Math.PI * 2)
     this.ctx.fill()
     this.ctx.beginPath()
-    this.ctx.arc(rightEye.x, rightEye.y, eyeRadius, 0, Math.PI * 2)
+    this.ctx.arc(rightEye.x, rightEye.y, EYE_RADIUS, 0, Math.PI * 2)
     this.ctx.fill()
 
-    // Draw pupils
-    const pupilPos = (eye: { x: number; y: number }) => {
-      const dx = Math.cos(angle) * pupilMove
-      const dy = Math.sin(angle) * pupilMove
-      const dist = Math.sqrt(dx * dx + dy * dy)
-      const scale = Math.min(1, (eyeRadius - pupilRadius) / dist)
-      return { x: eye.x + dx * scale, y: eye.y + dy * scale }
+    // EXACT MATCH: Pupil positioning and movement
+    const leftPupil = {
+      x: leftEye.x + Math.cos(angle) * PUPIL_MOVE,
+      y: leftEye.y + Math.sin(angle) * PUPIL_MOVE
+    }
+    const rightPupil = {
+      x: rightEye.x + Math.cos(angle) * PUPIL_MOVE,
+      y: rightEye.y + Math.sin(angle) * PUPIL_MOVE
     }
 
-    const leftPupil = pupilPos(leftEye)
-    const rightPupil = pupilPos(rightEye)
-
+    // EXACT MATCH: Simple black pupils
     this.ctx.fillStyle = 'black'
     this.ctx.beginPath()
-    this.ctx.arc(leftPupil.x, leftPupil.y, pupilRadius, 0, Math.PI * 2)
+    this.ctx.arc(leftPupil.x, leftPupil.y, PUPIL_RADIUS, 0, Math.PI * 2)
     this.ctx.fill()
     this.ctx.beginPath()
-    this.ctx.arc(rightPupil.x, rightPupil.y, pupilRadius, 0, Math.PI * 2)
-    this.ctx.fill()
-
-    // Draw eye highlights
-    this.ctx.fillStyle = 'rgba(255, 255, 255, 0.8)'
-    this.ctx.beginPath()
-    this.ctx.arc(leftPupil.x + 1, leftPupil.y + 1, 1.5, 0, Math.PI * 2)
-    this.ctx.fill()
-    this.ctx.beginPath()
-    this.ctx.arc(rightPupil.x + 1, rightPupil.y + 1, 1.5, 0, Math.PI * 2)
+    this.ctx.arc(rightPupil.x, rightPupil.y, PUPIL_RADIUS, 0, Math.PI * 2)
     this.ctx.fill()
   }
 
@@ -201,13 +182,26 @@ export class GameRenderer {
     })
   }
 
-  private adjustColorBrightness(hex: string, factor: number): string {
-    const r = parseInt(hex.substr(1, 2), 16)
-    const g = parseInt(hex.substr(3, 2), 16)
-    const b = parseInt(hex.substr(5, 2), 16)
-    const newR = Math.min(255, Math.max(0, Math.floor(r * factor)))
-    const newG = Math.min(255, Math.max(0, Math.floor(g * factor)))
-    const newB = Math.min(255, Math.max(0, Math.floor(b * factor)))
-    return `rgb(${newR}, ${newG}, ${newB})`
+  // Helper function to get darker shade for outline - matches HTML logic
+  private getDarkerShade(color: string): string {
+    if (color === '#66d9ff') {
+      return '#3399cc' // Exact match from HTML
+    }
+    
+    // For other colors, create a darker version
+    if (color.startsWith('#')) {
+      const r = parseInt(color.substr(1, 2), 16)
+      const g = parseInt(color.substr(3, 2), 16)
+      const b = parseInt(color.substr(5, 2), 16)
+      
+      // Make it darker by reducing each component by 30%
+      const newR = Math.floor(r * 0.7)
+      const newG = Math.floor(g * 0.7)
+      const newB = Math.floor(b * 0.7)
+      
+      return `rgb(${newR}, ${newG}, ${newB})`
+    }
+    
+    return color
   }
 }
